@@ -1,64 +1,77 @@
-from flask import Flask, request, render_template
-import pandas as pd
+from flask import Flask, render_template, request
+import requests
 
 app = Flask(__name__)
 
-# Simulated listing data for Ontario, Canada
-def get_listing_data(mls_ids):
-    listings = {
-        "40687604": {"address": "123 Main St, Toronto, ON", "beds": 3, "baths": 2, "price": 550000, "status": "Active", "sqft": 1500, "days_on_market": 30},
-        "40692301": {"address": "456 Oak Ave, Ottawa, ON", "beds": 4, "baths": 3, "price": 720000, "status": "Active", "sqft": 2000, "days_on_market": 45},
-        "40659114": {"address": "789 Maple Rd, Mississauga, ON", "beds": 2, "baths": 1, "price": 430000, "status": "Sold", "sqft": 1200, "days_on_market": 20},
-    }
+# MLS API Details (Update with correct endpoint & API key)
+MLS_API_URL = "https://example.com/mls-api"  # Replace with the correct API URL
+API_KEY = "your_api_key_here"  # Replace with your actual API key
+
+def fetch_mls_data(mls_ids):
+    """Fetch real estate listings from the MLS API."""
+    listings = []
+    headers = {"Authorization": f"Bearer {API_KEY}"}
+
+    for mls_id in mls_ids:
+        response = requests.get(f"{MLS_API_URL}/{mls_id}", headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+            listings.append({
+                "MLS ID": data.get("mls_id"),
+                "Address": data.get("address"),
+                "Beds": data.get("beds"),
+                "Baths": data.get("baths"),
+                "Price": data.get("price"),
+                "Status": data.get("status"),
+                "SqFt": data.get("sqft"),
+                "Days on Market": data.get("days_on_market")
+            })
     
-    return {mls_id: listings.get(mls_id, None) for mls_id in mls_ids}
+    return listings
 
 @app.route("/", methods=["GET", "POST"])
 def home():
     report = None
-
     if request.method == "POST":
-        mls_input = request.form.get("mls_ids", "")
-        mls_ids = [mls.strip() for mls in mls_input.split(",") if mls.strip()]
-        
-        listing_data = get_listing_data(mls_ids)
+        user_input = request.form.get("mls_ids")
+        mls_ids = [mls.strip() for mls in user_input.split(",")]
 
-        active_listings = [listing for listing in listing_data.values() if listing and listing["status"] == "Active"]
-        sold_listings = [listing for listing in listing_data.values() if listing and listing["status"] == "Sold"]
+        # Fetch real data from MLS API
+        selected_listings = fetch_mls_data(mls_ids)
 
-        report = "🏡 **Real Estate Report**\n\n"
+        if not selected_listings:
+            report = "No matching listings found."
+        else:
+            total_price = sum(l["Price"] for l in selected_listings)
+            avg_price = total_price / len(selected_listings) if selected_listings else 0
+            min_price = min(l["Price"] for l in selected_listings)
+            max_price = max(l["Price"] for l in selected_listings)
+            avg_sqft = sum(l["SqFt"] for l in selected_listings) / len(selected_listings)
+            avg_days_on_market = sum(l["Days on Market"] for l in selected_listings) / len(selected_listings)
 
-        # Show Listing Details First
-        for mls_id, listing in listing_data.items():
-            if listing:
-                report += f"📌 **MLS ID: {mls_id}**\n"
-                report += f"🏠 **{listing['address']}**\n"
-                report += f"🛏 {listing['beds']} beds | 🛁 {listing['baths']} baths\n"
-                report += f"💰 **Price:** ${listing['price']:,}\n"
-                report += f"📌 **Status:** {listing['status']}\n"
-                report += "----------------------------------------\n"
+            report = "🏡 **Real Estate Report** 🏡\n\n"
 
-        # Market Summary at the End
-        if active_listings:
-            active_prices = [listing["price"] for listing in active_listings]
-            active_sqft = [listing["sqft"] for listing in active_listings]
-            active_days = [listing["days_on_market"] for listing in active_listings]
+            for listing in selected_listings:
+                report += f"📌 MLS ID: {listing['MLS ID']}\n"
+                report += f"🏠 Address: {listing['Address']}\n"
+                report += f"🛏 Beds: {listing['Beds']} | 🛁 Baths: {listing['Baths']}\n"
+                report += f"💰 Price: ${listing['Price']:,}\n"
+                report += f"📊 Status: {listing['Status']}\n"
+                report += "-" * 40 + "\n"
 
-            report += "\n📊 **Market Summary:**\n"
-            report += f"There are **{len(active_listings)} active listings** with prices ranging from **${min(active_prices):,}** to **${max(active_prices):,}**.\n"
-            report += f"The **average price** is **${sum(active_prices) / len(active_prices):,.2f}**, and the **average square footage** is **{sum(active_sqft) / len(active_sqft):.0f} sq ft**.\n"
-            report += f"The **average days on market** is **{sum(active_days) / len(active_days):.0f} days**.\n"
-
-        if sold_listings:
-            sold_prices = [listing["price"] for listing in sold_listings]
-            sold_days = [listing["days_on_market"] for listing in sold_listings]
-
-            report += "\n**Sold Listings:**\n"
-            report += f"- **{len(sold_listings)} closed listings** with sale prices ranging from **${min(sold_prices):,}** to **${max(sold_prices):,}**.\n"
-            report += f"- Fastest sale completed in **{min(sold_days)} days**, longest sale took **{max(sold_days)} days**.\n"
+            # Market Summary in Detailed Sentence Form
+            market_summary = (
+                f"\n📊 **Market Summary:**\n\n"
+                f"🏠 There are **{len(selected_listings)} active listings** with prices ranging from **${min_price:,}** to **${max_price:,}**.\n"
+                f"📉 The **average price** is **${avg_price:,.2f}**, and the average **square footage** is **{avg_sqft:,.0f} sqft**.\n"
+                f"⏳ The **average days on market** is **{avg_days_on_market:.0f} days**.\n\n"
+            )
+            report += market_summary
 
     return render_template("index.html", report=report)
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
