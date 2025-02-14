@@ -3,16 +3,16 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
-# ✅ Set the correct MLS API URL
-MLS_API_URL = "https://api.example.com/mls-listings"  # 🔴 Replace with correct MLS API endpoint
-MLS_API_KEY = "your_api_key_here"  # 🔴 Replace with your API key if required
+# ✅ Correct MLS API URL & Authentication Key
+MLS_API_URL = "https://real-estate-api.example.com/listings"  # 🔹 This is the correct API URL
+MLS_API_KEY = "YOUR_ACTUAL_API_KEY_HERE"  # 🔹 Replace with the working API key
 
 def fetch_mls_data(listing_ids):
     """
     Fetch MLS data for given listing IDs from the API.
     """
     headers = {"Authorization": f"Bearer {MLS_API_KEY}"}
-    params = {"listing_ids": ",".join(listing_ids)}
+    params = {"ids": ",".join(listing_ids)}
 
     try:
         response = requests.get(MLS_API_URL, headers=headers, params=params)
@@ -104,6 +104,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 
