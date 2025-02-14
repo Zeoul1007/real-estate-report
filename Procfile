@@ -1,3 +1,4 @@
-web: gunicorn rentcast_app:app
+web: gunicorn app:app
+
 
 
