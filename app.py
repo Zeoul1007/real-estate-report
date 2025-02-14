@@ -1,75 +1,66 @@
 import requests
-import json
-import os
-from flask import Flask, request, render_template
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
-# RealtyMole API Key (Stored in Railway Environment Variables)
-API_KEY = os.getenv("REALTYMOLE_API_KEY", "78fae72b7ea847b986ca17df34c8fc76")
-BASE_URL = "https://api.realtymole.com/v1/properties"
+# RentCast API Configuration
+API_KEY = "78fae72b7ea847b986ca17df34c8fc76"
+BASE_URL = "https://api.rentcast.io/v1/properties"
 
+# Function to fetch property data
 def get_property_data(mls_ids):
-    """ Fetch property data from RealtyMole API based on MLS listing IDs. """
-    property_listings = []
-    
+    headers = {"X-Api-Key": API_KEY}
+    listings = []
+
     for mls_id in mls_ids:
-        params = {
-            "apiKey": API_KEY,
-            "listingId": mls_id
-        }
-        
-        response = requests.get(BASE_URL, params=params)
-        
+        params = {"mlsId": mls_id}  # Use MLS ID as query parameter
+        response = requests.get(BASE_URL, headers=headers, params=params)
+
         if response.status_code == 200:
             data = response.json()
             if data:
-                property_listings.append(data)
-    
-    return property_listings
+                listings.append(data)
+        else:
+            print(f"Failed to fetch MLS ID {mls_id}: {response.status_code}")
 
-def generate_market_summary(properties):
-    """ Generate a market summary based on retrieved listings. """
-    if not properties:
-        return "No matching listings found."
-
-    prices = [p.get("price", 0) for p in properties]
-    sq_ft = [p.get("squareFootage", 0) for p in properties]
-    days_on_market = [p.get("daysOnMarket", 0) for p in properties]
-
-    avg_price = sum(prices) / len(prices) if prices else 0
-    avg_sq_ft = sum(sq_ft) / len(sq_ft) if sq_ft else 0
-    avg_days = sum(days_on_market) / len(days_on_market) if days_on_market else 0
-
-    summary = (
-        f"There are {len(properties)} active listings with prices ranging from "
-        f"${min(prices):,.0f} to ${max(prices):,.0f}. "
-        f"The average price is ${avg_price:,.2f}, "
-        f"with an average square footage of {avg_sq_ft:.0f} sq ft. "
-        f"Properties have been on the market for an average of {avg_days:.0f} days."
-    )
-
-    return summary
+    return listings
 
 @app.route("/", methods=["GET", "POST"])
 def home():
-    """ Main page for entering MLS listing IDs and generating reports. """
-    report = ""
+    report = None
+
     if request.method == "POST":
-        mls_ids = request.form.get("mls_ids")
+        mls_input = request.form["mls_ids"]
+        mls_ids = [id.strip() for id in mls_input.split(",") if id.strip()]
+
         if mls_ids:
-            mls_ids = [id.strip() for id in mls_ids.split(",")]
             properties = get_property_data(mls_ids)
-            report = generate_market_summary(properties)
-    
+
+            if properties:
+                # Generate a formatted market summary
+                report = generate_market_summary(properties)
+            else:
+                report = "No matching listings found."
+
     return render_template("index.html", report=report)
 
+# Function to generate a market summary
+def generate_market_summary(listings):
+    if not listings:
+        return "No market data available."
+
+    total_price = sum(listing.get("price", 0) for listing in listings)
+    avg_price = total_price / len(listings) if listings else 0
+    avg_sqft = sum(listing.get("sqft", 0) for listing in listings) / len(listings) if listings else 0
+
+    summary = f"""
+    🏡 **Market Summary:**  
+    There are **{len(listings)} active listings** with prices ranging from **${min(l['price'] for l in listings):,}**  
+    to **${max(l['price'] for l in listings):,}**.  
+    The **average price** is **${avg_price:,.2f}**, and the **average square footage** is **{avg_sqft:.0f} sq ft**.
+    """
+
+    return summary
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
-
-
-
-
-
-
+    app.run(debug=True)
