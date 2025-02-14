@@ -6,7 +6,31 @@
     <title>Real Estate Report</title>
 </head>
 <body>
-    <h1>🏡 Real Estate Report</h1>
-    <p>{{ report }}</p>
+    <h1>🏡 Real Estate Report Maker</h1>
+
+    <form method="post">
+        <label for="mls_ids">Enter MLS Listing IDs (comma-separated):</label>
+        <input type="text" id="mls_ids" name="mls_ids">
+        <button type="submit">Generate Report</button>
+    </form>
+
+    {% if report %}
+        <h2>📊 Market Summary:</h2>
+        <p>{{ report.market_summary }}</p>
+
+        <h2>🏠 Active Listings:</h2>
+        {% for listing in report.listings %}
+            <p>
+                <strong>{{ listing.address }}</strong><br>
+                Beds: {{ listing.beds }} | Baths: {{ listing.baths }} | Price: {{ listing.price }}<br>
+                Status: {{ listing.status }} | Square Footage: {{ listing.sqft }} sqft | Days on Market: {{ listing.days_on_market }}
+            </p>
+            <hr>
+        {% endfor %}
+
+        <h2>✅ Sold Listings:</h2>
+        <p>{{ report.sold_summary }}</p>
+    {% endif %}
 </body>
 </html>
+
