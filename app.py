@@ -3,12 +3,11 @@ import pandas as pd
 
 app = Flask(__name__)
 
-# Sample function to simulate fetching data (replace with real API)
+# Simulated listing data for Ontario, Canada
 def get_listing_data(mls_ids):
-    # Simulated Ontario, Canada listings
     listings = {
         "40687604": {"address": "123 Main St, Toronto, ON", "beds": 3, "baths": 2, "price": 550000, "status": "Active", "sqft": 1500, "days_on_market": 30},
-        "40692301": {"address": "456 Oak Ave, Ottawa, ON", "beds": 4, "baths": 3, "price": 720000, "status": "Pending", "sqft": 2000, "days_on_market": 45},
+        "40692301": {"address": "456 Oak Ave, Ottawa, ON", "beds": 4, "baths": 3, "price": 720000, "status": "Active", "sqft": 2000, "days_on_market": 45},
         "40659114": {"address": "789 Maple Rd, Mississauga, ON", "beds": 2, "baths": 1, "price": 430000, "status": "Sold", "sqft": 1200, "days_on_market": 20},
     }
     
@@ -27,7 +26,9 @@ def home():
         active_listings = [listing for listing in listing_data.values() if listing and listing["status"] == "Active"]
         sold_listings = [listing for listing in listing_data.values() if listing and listing["status"] == "Sold"]
 
-        report = "**🏡 Real Estate Report**\n\n"
+        report = "🏡 **Real Estate Report**\n\n"
+
+        # Show Listing Details First
         for mls_id, listing in listing_data.items():
             if listing:
                 report += f"📌 **MLS ID: {mls_id}**\n"
@@ -37,6 +38,7 @@ def home():
                 report += f"📌 **Status:** {listing['status']}\n"
                 report += "----------------------------------------\n"
 
+        # Market Summary at the End
         if active_listings:
             active_prices = [listing["price"] for listing in active_listings]
             active_sqft = [listing["sqft"] for listing in active_listings]
@@ -59,3 +61,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
