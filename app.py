@@ -13,15 +13,20 @@ def get_property_data(mls_ids):
     listings = []
 
     for mls_id in mls_ids:
-        params = {"mlsId": mls_id}  # Use MLS ID as query parameter
+        params = {"address": mls_id}  # RentCast expects "address" instead of "mlsId"
         response = requests.get(BASE_URL, headers=headers, params=params)
 
         if response.status_code == 200:
-            data = response.json()
-            if data:
-                listings.append(data)
+            try:
+                data = response.json()
+                if data and "properties" in data:
+                    listings.extend(data["properties"])
+                else:
+                    print(f"No data found for MLS ID {mls_id}. Response: {data}")
+            except requests.exceptions.JSONDecodeError:
+                print(f"Error decoding JSON for MLS ID {mls_id}. Response text: {response.text}")
         else:
-            print(f"Failed to fetch MLS ID {mls_id}: {response.status_code}")
+            print(f"Failed to fetch MLS ID {mls_id}: {response.status_code} - {response.text}")
 
     return listings
 
@@ -37,7 +42,6 @@ def home():
             properties = get_property_data(mls_ids)
 
             if properties:
-                # Generate a formatted market summary
                 report = generate_market_summary(properties)
             else:
                 report = "No matching listings found."
@@ -49,14 +53,16 @@ def generate_market_summary(listings):
     if not listings:
         return "No market data available."
 
-    total_price = sum(listing.get("price", 0) for listing in listings)
+    total_price = sum(l.get("price", 0) for l in listings if "price" in l)
     avg_price = total_price / len(listings) if listings else 0
-    avg_sqft = sum(listing.get("sqft", 0) for listing in listings) / len(listings) if listings else 0
+    avg_sqft = sum(l.get("sqft", 0) for l in listings if "sqft" in l) / len(listings) if listings else 0
+    min_price = min((l.get("price", 0) for l in listings if "price" in l), default=0)
+    max_price = max((l.get("price", 0) for l in listings if "price" in l), default=0)
 
     summary = f"""
     🏡 **Market Summary:**  
-    There are **{len(listings)} active listings** with prices ranging from **${min(l['price'] for l in listings):,}**  
-    to **${max(l['price'] for l in listings):,}**.  
+    There are **{len(listings)} active listings** with prices ranging from **${min_price:,.2f}**  
+    to **${max_price:,.2f}**.  
     The **average price** is **${avg_price:,.2f}**, and the **average square footage** is **{avg_sqft:.0f} sq ft**.
     """
 
@@ -64,3 +70,4 @@ def generate_market_summary(listings):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
