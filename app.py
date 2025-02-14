@@ -1,109 +1,73 @@
 import requests
-from flask import Flask, render_template, request
+import json
+import os
+from flask import Flask, request, render_template
 
 app = Flask(__name__)
 
-# ✅ Correct MLS API URL & Authentication Key
-MLS_API_URL = "https://real-estate-api.example.com/listings"  # 🔹 This is the correct API URL
-MLS_API_KEY = "YOUR_ACTUAL_API_KEY_HERE"  # 🔹 Replace with the working API key
+# RealtyMole API Key (Stored in Railway Environment Variables)
+API_KEY = os.getenv("REALTYMOLE_API_KEY", "78fae72b7ea847b986ca17df34c8fc76")
+BASE_URL = "https://api.realtymole.com/v1/properties"
 
-def fetch_mls_data(listing_ids):
-    """
-    Fetch MLS data for given listing IDs from the API.
-    """
-    headers = {"Authorization": f"Bearer {MLS_API_KEY}"}
-    params = {"ids": ",".join(listing_ids)}
-
-    try:
-        response = requests.get(MLS_API_URL, headers=headers, params=params)
-        response.raise_for_status()
-        data = response.json()
+def get_property_data(mls_ids):
+    """ Fetch property data from RealtyMole API based on MLS listing IDs. """
+    property_listings = []
+    
+    for mls_id in mls_ids:
+        params = {
+            "apiKey": API_KEY,
+            "listingId": mls_id
+        }
         
-        if not data or "listings" not in data:
-            print("⚠️ No listings found in API response.")
-            return []
+        response = requests.get(BASE_URL, params=params)
         
-        return data["listings"]
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                property_listings.append(data)
+    
+    return property_listings
 
-    except requests.exceptions.RequestException as e:
-        print(f"❌ API request failed: {e}")
-        return []
-
-def generate_market_summary(listings):
-    """
-    Generate a narrative market summary from active & sold listings.
-    """
-    if not listings:
+def generate_market_summary(properties):
+    """ Generate a market summary based on retrieved listings. """
+    if not properties:
         return "No matching listings found."
 
-    active_listings = [listing for listing in listings if listing["status"] == "Active"]
-    sold_listings = [listing for listing in listings if listing["status"] in ["Sold", "Closed"]]
+    prices = [p.get("price", 0) for p in properties]
+    sq_ft = [p.get("squareFootage", 0) for p in properties]
+    days_on_market = [p.get("daysOnMarket", 0) for p in properties]
 
-    if not active_listings and not sold_listings:
-        return "No active or sold listings found."
+    avg_price = sum(prices) / len(prices) if prices else 0
+    avg_sq_ft = sum(sq_ft) / len(sq_ft) if sq_ft else 0
+    avg_days = sum(days_on_market) / len(days_on_market) if days_on_market else 0
 
-    # Extract pricing & market trends
-    active_prices = [listing["price"] for listing in active_listings]
-    sold_prices = [listing["price"] for listing in sold_listings]
-    active_sqft = [listing["sqft"] for listing in active_listings if "sqft" in listing]
-    days_on_market = [listing["days_on_market"] for listing in listings if "days_on_market" in listing]
-
-    summary = "**📊 Market Summary:**\n"
-
-    if active_listings:
-        summary += (
-            f"🏠 There are **{len(active_listings)} active listings** "
-            f"ranging from **${min(active_prices):,}** to **${max(active_prices):,}**.\n"
-            f"The **average price** is **${sum(active_prices)/len(active_prices):,.2f}** "
-            f"and the **average square footage** is **{sum(active_sqft)/len(active_sqft):.0f} sq ft**.\n"
-        )
-
-    if sold_listings:
-        summary += (
-            f"✅ There are **{len(sold_listings)} sold listings** "
-            f"with sale prices ranging from **${min(sold_prices):,}** to **${max(sold_prices):,}**.\n"
-        )
-
-    if days_on_market:
-        summary += (
-            f"⏳ The average time on market is **{sum(days_on_market)/len(days_on_market):.1f} days**.\n"
-        )
+    summary = (
+        f"There are {len(properties)} active listings with prices ranging from "
+        f"${min(prices):,.0f} to ${max(prices):,.0f}. "
+        f"The average price is ${avg_price:,.2f}, "
+        f"with an average square footage of {avg_sq_ft:.0f} sq ft. "
+        f"Properties have been on the market for an average of {avg_days:.0f} days."
+    )
 
     return summary
 
 @app.route("/", methods=["GET", "POST"])
 def home():
-    """
-    Home page with MLS listing search and market analysis.
-    """
+    """ Main page for entering MLS listing IDs and generating reports. """
     report = ""
     if request.method == "POST":
-        listing_ids = request.form["mls_ids"].split(",")
-        listing_ids = [id.strip() for id in listing_ids if id.strip()]  # Remove empty entries
-
-        if listing_ids:
-            listings = fetch_mls_data(listing_ids)
-            market_summary = generate_market_summary(listings)
-
-            # Render listing details & market summary
-            report = "\n\n".join(
-                [
-                    f"🏡 **MLS ID:** {listing['id']}\n"
-                    f"📍 **Address:** {listing['address']}\n"
-                    f"💰 **Price:** ${listing['price']:,}\n"
-                    f"🛏️ **Beds:** {listing['beds']}  |  🛁 **Baths:** {listing['baths']}\n"
-                    f"📏 **Square Footage:** {listing.get('sqft', 'N/A')} sqft\n"
-                    f"📊 **Status:** {listing['status']}"
-                    for listing in listings
-                ]
-            )
-
-            report += f"\n\n{market_summary}"
-
+        mls_ids = request.form.get("mls_ids")
+        if mls_ids:
+            mls_ids = [id.strip() for id in mls_ids.split(",")]
+            properties = get_property_data(mls_ids)
+            report = generate_market_summary(properties)
+    
     return render_template("index.html", report=report)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
 
 
 
