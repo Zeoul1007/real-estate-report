@@ -11,35 +11,41 @@ BASE_URL = "https://api.houski.ca/properties"
 def get_property_data(address, city, province, country="CA"):
     headers = {"X-Api-Key": API_KEY}
     params = {
-        "address": address,
-        "city": city,
-        "province_abbreviation": province,
-        "country_abbreviation": country
+        "address": address.replace(" ", "-"),  # Format spaces as dashes
+        "city": city.replace(" ", "-"),
+        "province_abbreviation": province.upper(),
+        "country_abbreviation": country.upper()
     }
+
+    print(f"Fetching data with parameters: {params}")  # Debugging line
 
     response = requests.get(BASE_URL, headers=headers, params=params)
 
     if response.status_code == 200:
         data = response.json()
         return data.get("data", [])  # Extract property list
+    elif response.status_code == 400:
+        return f"Bad request: {response.json().get('error', 'Unknown error')}"
     else:
-        print(f"Failed to fetch data: {response.status_code}")
-        return []
+        return f"API Error {response.status_code}: {response.text}"
 
 @app.route("/", methods=["GET", "POST"])
 def home():
     report = None
 
     if request.method == "POST":
-        address_input = request.form["address"]
-        city_input = request.form["city"]
-        province_input = request.form["province"]
+        address_input = request.form.get("address", "").strip()
+        city_input = request.form.get("city", "").strip()
+        province_input = request.form.get("province", "").strip()
 
-        if address_input and city_input and province_input:
+        if not address_input or not city_input or not province_input:
+            report = "⚠️ Please enter a valid address, city, and province."
+        else:
             properties = get_property_data(address_input, city_input, province_input)
 
-            if properties:
-                # Generate a formatted market summary
+            if isinstance(properties, str):  # API error returned as a string
+                report = properties
+            elif properties:
                 report = generate_market_summary(properties)
             else:
                 report = "No matching listings found."
@@ -60,4 +66,5 @@ def generate_market_summary(listings):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
