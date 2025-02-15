@@ -3,17 +3,17 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
-# RentCast API Configuration
-API_KEY = "78fae72b7ea847b986ca17df34c8fc76"
-BASE_URL = "https://api.rentcast.io/v1/properties"
+# Houski API Configuration
+API_KEY = "eff4a3de-a3a5-4deb-b025-551a6cfa7b8d"
+BASE_URL = "https://api.houski.ca/v1/properties"
 
-# Function to fetch property data
+# Function to fetch property data from Houski API
 def get_property_data(mls_ids):
-    headers = {"X-Api-Key": API_KEY}
+    headers = {"Authorization": f"Bearer {API_KEY}"}
     listings = []
 
     for mls_id in mls_ids:
-        params = {"address": mls_id}  # RentCast expects "address" instead of "mlsId"
+        params = {"listingId": mls_id}  # Houski API expects "listingId"
         response = requests.get(BASE_URL, headers=headers, params=params)
 
         if response.status_code == 200:
@@ -70,4 +70,3 @@ def generate_market_summary(listings):
 
 if __name__ == "__main__":
     app.run(debug=True)
-
