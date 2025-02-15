@@ -4,52 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real Estate Report Maker</title>
-    <script>
-        async function fetchSuggestions() {
-            const query = document.getElementById("addressInput").value;
-            if (query.length < 3) return;
-
-            const response = await fetch(`/autocomplete?query=${query}`);
-            const suggestions = await response.json();
-            
-            let suggestionList = document.getElementById("suggestions");
-            suggestionList.innerHTML = "";
-            suggestions.forEach(addr => {
-                let item = document.createElement("div");
-                item.textContent = addr;
-                item.onclick = function() { addAddress(addr); };
-                suggestionList.appendChild(item);
-            });
-        }
-
-        function addAddress(address) {
-            let inputField = document.getElementById("selectedAddresses");
-            inputField.value += (inputField.value ? ", " : "") + address;
-            document.getElementById("suggestions").innerHTML = "";
-        }
-    </script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        #suggestions div { cursor: pointer; padding: 5px; border: 1px solid #ddd; }
-        #suggestions div:hover { background: #f0f0f0; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 90%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #results {
+            margin-top: 20px;
+            text-align: left;
+        }
+        #autocomplete-results {
+            background: white;
+            border: 1px solid #ddd;
+            position: absolute;
+            width: 89%;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 10;
+        }
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .autocomplete-item:hover {
+            background: #f1f1f1;
+        }
+        .logo {
+            max-width: 200px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
-    <h1>🏡 Real Estate Report Maker</h1>
-    <img src="/static/logo.png" alt="Pay It Forward Realty" width="200"><br><br>
-    
-    <form method="post">
-        <input type="text" id="addressInput" placeholder="Start typing an address..." onkeyup="fetchSuggestions()">
-        <div id="suggestions"></div>
-        <input type="hidden" name="addresses" id="selectedAddresses">
-        <br><br>
-        <button type="submit">Generate Report</button>
-    </form>
+    <div class="container">
+        <img src="{{ url_for('static', filename='payitforward_logo.png') }}" alt="Pay It Forward Realty" class="logo">
+        <h1>🏡 Real Estate Report Maker</h1>
+        <p>Enter property addresses (comma-separated):</p>
+        <input type="text" id="address-input" name="addresses" placeholder="e.g., 123 Main St, 456 Elm St">
+        <div id="autocomplete-results"></div>
+        <button onclick="submitForm()">Generate Report</button>
+        
+        <div id="results">
+            {% if report %}
+                <h2>📊 Market Summary:</h2>
+                <p>{{ report | safe }}</p>
+            {% endif %}
+        </div>
+    </div>
 
-    {% if report %}
-        <h2>📊 Market Summary:</h2>
-        <p>{{ report | safe }}</p>
-    {% endif %}
+    <script>
+        // Autocomplete Functionality
+        document.getElementById("address-input").addEventListener("input", function() {
+            let query = this.value;
+            if (query.length < 3) {
+                document.getElementById("autocomplete-results").style.display = "none";
+                return;
+            }
+
+            fetch(`/autocomplete?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    let resultsContainer = document.getElementById("autocomplete-results");
+                    resultsContainer.innerHTML = "";
+                    resultsContainer.style.display = "block";
+
+                    data.forEach(item => {
+                        let div = document.createElement("div");
+                        div.textContent = item.address;
+                        div.classList.add("autocomplete-item");
+                        div.onclick = function() {
+                            let input = document.getElementById("address-input");
+                            input.value = input.value ? input.value + ", " + item.address : item.address;
+                            resultsContainer.style.display = "none";
+                        };
+                        resultsContainer.appendChild(div);
+                    });
+                });
+        });
+
+        function submitForm() {
+            let input = document.getElementById("address-input").value;
+            if (!input) {
+                alert("Please enter at least one address.");
+                return;
+            }
+
+            let form = document.createElement("form");
+            form.method = "POST";
+            form.action = "/";
+
+            let inputField = document.createElement("input");
+            inputField.type = "hidden";
+            inputField.name = "addresses";
+            inputField.value = input;
+
+            form.appendChild(inputField);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
 </body>
 </html>
 
