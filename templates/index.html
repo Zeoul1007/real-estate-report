@@ -7,15 +7,27 @@
 </head>
 <body>
     <h1>🏡 Real Estate Report Maker</h1>
+
     <form method="POST">
-        <label for="mls_ids">Enter MLS Listing IDs (comma-separated):</label><br>
-        <input type="text" id="mls_ids" name="mls_ids" required><br>
+        <label for="address">Enter Property Address:</label><br>
+        <input type="text" id="address" name="address" placeholder="123 Main St" required><br>
+
+        <label for="city">City:</label><br>
+        <input type="text" id="city" name="city" placeholder="Brantford" required><br>
+
+        <label for="province">Province:</label><br>
+        <input type="text" id="province" name="province" placeholder="ON" required><br>
+
+        <!-- Example format to help users -->
+        <p><small><i>Example: 5 Thistledown Drive, Brantford, ON</i></small></p>
+
         <button type="submit">Generate Report</button>
     </form>
-    
+
     {% if report %}
         <h2>📊 Market Summary:</h2>
         <p>{{ report | safe }}</p>
     {% endif %}
 </body>
 </html>
+
