@@ -10,14 +10,18 @@ BASE_URL = "https://api.houski.ca/properties"
 # Function to fetch property data
 def get_property_data(address, city, province, country="CA"):
     headers = {"X-Api-Key": API_KEY}
+    
+    # Automatically clean up user input (remove spaces, add correct separators)
+    formatted_address = address.strip().replace(" ", "-").lower()
+    formatted_city = city.strip().replace(" ", "-").lower()
+    formatted_province = province.strip().upper()
+
     params = {
-        "address": address.replace(" ", "-"),  # Format spaces as dashes
-        "city": city.replace(" ", "-"),
-        "province_abbreviation": province.upper(),
+        "address": formatted_address,
+        "city": formatted_city,
+        "province_abbreviation": formatted_province,
         "country_abbreviation": country.upper()
     }
-
-    print(f"Fetching data with parameters: {params}")  # Debugging line
 
     response = requests.get(BASE_URL, headers=headers, params=params)
 
@@ -25,13 +29,14 @@ def get_property_data(address, city, province, country="CA"):
         data = response.json()
         return data.get("data", [])  # Extract property list
     elif response.status_code == 400:
-        return f"Bad request: {response.json().get('error', 'Unknown error')}"
+        return f"⚠️ Bad request: {response.json().get('error', 'Unknown error')}"
     else:
-        return f"API Error {response.status_code}: {response.text}"
+        return f"❌ API Error {response.status_code}: {response.text}"
 
 @app.route("/", methods=["GET", "POST"])
 def home():
     report = None
+    example_format = "Example: 5 Thistledown Drive, Brantford, ON"
 
     if request.method == "POST":
         address_input = request.form.get("address", "").strip()
@@ -48,9 +53,9 @@ def home():
             elif properties:
                 report = generate_market_summary(properties)
             else:
-                report = "No matching listings found."
+                report = "⚠️ No matching listings found. Please check the format."
 
-    return render_template("index.html", report=report)
+    return render_template("index.html", report=report, example_format=example_format)
 
 # Function to generate a market summary
 def generate_market_summary(listings):
@@ -66,5 +71,6 @@ def generate_market_summary(listings):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
