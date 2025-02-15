@@ -11,7 +11,7 @@ BASE_URL = "https://api.houski.ca/properties"
 def get_property_data(address, city, province, country="CA"):
     headers = {"X-Api-Key": API_KEY}
     
-    # Automatically clean up user input (remove spaces, add correct separators)
+    # Auto-format input to match API requirements
     formatted_address = address.strip().replace(" ", "-").lower()
     formatted_city = city.strip().replace(" ", "-").lower()
     formatted_province = province.strip().upper()
@@ -20,7 +20,8 @@ def get_property_data(address, city, province, country="CA"):
         "address": formatted_address,
         "city": formatted_city,
         "province_abbreviation": formatted_province,
-        "country_abbreviation": country.upper()
+        "country_abbreviation": country.upper(),
+        "results_per_page": 3,  # Get up to 3 results per request
     }
 
     response = requests.get(BASE_URL, headers=headers, params=params)
@@ -71,6 +72,7 @@ def generate_market_summary(listings):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 
