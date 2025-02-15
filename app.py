@@ -8,70 +8,68 @@ API_KEY = "eff4a3de-a3a5-4deb-b025-551a6cfa7b8d"
 BASE_URL = "https://api.houski.ca/properties"
 
 # Function to fetch property data
-def get_property_data(address, city, province, country="CA"):
-    headers = {"X-Api-Key": API_KEY}
-    
-    # Auto-format input to match API requirements
-    formatted_address = address.strip().replace(" ", "-").lower()
-    formatted_city = city.strip().replace(" ", "-").lower()
-    formatted_province = province.strip().upper()
-
+def get_property_data(address, city, province):
     params = {
-        "address": formatted_address,
-        "city": formatted_city,
-        "province_abbreviation": formatted_province,
-        "country_abbreviation": country.upper(),
-        "results_per_page": 3,  # Get up to 3 results per request
+        "address": address,
+        "city": city,
+        "province_abbreviation": province,
+        "country_abbreviation": "CA",
+        "api_key": API_KEY
     }
-
-    response = requests.get(BASE_URL, headers=headers, params=params)
-
+    
+    response = requests.get(BASE_URL, params=params)
+    
     if response.status_code == 200:
         data = response.json()
-        return data.get("data", [])  # Extract property list
-    elif response.status_code == 400:
-        return f"⚠️ Bad request: {response.json().get('error', 'Unknown error')}"
-    else:
-        return f"❌ API Error {response.status_code}: {response.text}"
+        if data.get("data"):
+            return data["data"]
+    
+    return None
 
 @app.route("/", methods=["GET", "POST"])
 def home():
     report = None
-    example_format = "Example: 5 Thistledown Drive, Brantford, ON"
 
     if request.method == "POST":
-        address_input = request.form.get("address", "").strip()
-        city_input = request.form.get("city", "").strip()
-        province_input = request.form.get("province", "").strip()
+        address_input = request.form["address"]
+        city_input = request.form["city"]
+        province_input = request.form["province"]
 
-        if not address_input or not city_input or not province_input:
-            report = "⚠️ Please enter a valid address, city, and province."
-        else:
+        if address_input and city_input and province_input:
             properties = get_property_data(address_input, city_input, province_input)
 
-            if isinstance(properties, str):  # API error returned as a string
-                report = properties
-            elif properties:
+            if properties:
                 report = generate_market_summary(properties)
             else:
-                report = "⚠️ No matching listings found. Please check the format."
+                report = "No matching listings found."
 
-    return render_template("index.html", report=report, example_format=example_format)
+    return render_template("index.html", report=report)
 
 # Function to generate a market summary
 def generate_market_summary(listings):
     if not listings:
         return "No market data available."
 
-    summary = "📊 **Market Summary:**\n\n"
-    for listing in listings:
-        summary += f"🏡 **{listing.get('address', 'Unknown Address')}**\n"
-        summary += f"- **Property ID:** {listing.get('property_id', 'N/A')}\n\n"
+    report_lines = ["📊 **Market Summary:**"]
 
-    return summary
+    for listing in listings:
+        address = listing.get("address", "Unknown Address")
+        price = listing.get("price", "N/A")
+        bedrooms = listing.get("bedroom", "N/A")
+        bathrooms = listing.get("bathroom_full", "N/A")
+
+        report_lines.append(
+            f"- **{address}**\n"
+            f"  - 💰 **Price:** {price if price != 'N/A' else 'Not Available'}\n"
+            f"  - 🛏 **Bedrooms:** {bedrooms}\n"
+            f"  - 🛁 **Bathrooms:** {bathrooms}\n"
+        )
+
+    return "\n".join(report_lines)
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 
