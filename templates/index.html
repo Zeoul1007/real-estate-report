@@ -4,23 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real Estate Report Maker</title>
+    <script>
+        async function fetchSuggestions() {
+            const query = document.getElementById("addressInput").value;
+            if (query.length < 3) return;
+
+            const response = await fetch(`/autocomplete?query=${query}`);
+            const suggestions = await response.json();
+            
+            let suggestionList = document.getElementById("suggestions");
+            suggestionList.innerHTML = "";
+            suggestions.forEach(addr => {
+                let item = document.createElement("div");
+                item.textContent = addr;
+                item.onclick = function() { addAddress(addr); };
+                suggestionList.appendChild(item);
+            });
+        }
+
+        function addAddress(address) {
+            let inputField = document.getElementById("selectedAddresses");
+            inputField.value += (inputField.value ? ", " : "") + address;
+            document.getElementById("suggestions").innerHTML = "";
+        }
+    </script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #suggestions div { cursor: pointer; padding: 5px; border: 1px solid #ddd; }
+        #suggestions div:hover { background: #f0f0f0; }
+    </style>
 </head>
 <body>
     <h1>🏡 Real Estate Report Maker</h1>
-
-    <form method="POST">
-        <label for="address">Enter Property Address:</label><br>
-        <input type="text" id="address" name="address" placeholder="123 Main St" required><br>
-
-        <label for="city">City:</label><br>
-        <input type="text" id="city" name="city" placeholder="Brantford" required><br>
-
-        <label for="province">Province:</label><br>
-        <input type="text" id="province" name="province" placeholder="ON" required><br>
-
-        <!-- Example format to help users -->
-        <p><small><i>Example: 5 Thistledown Drive, Brantford, ON</i></small></p>
-
+    <img src="/static/logo.png" alt="Pay It Forward Realty" width="200"><br><br>
+    
+    <form method="post">
+        <input type="text" id="addressInput" placeholder="Start typing an address..." onkeyup="fetchSuggestions()">
+        <div id="suggestions"></div>
+        <input type="hidden" name="addresses" id="selectedAddresses">
+        <br><br>
         <button type="submit">Generate Report</button>
     </form>
 
@@ -30,4 +52,5 @@
     {% endif %}
 </body>
 </html>
+
 
